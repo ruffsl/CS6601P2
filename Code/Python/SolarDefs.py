@@ -132,6 +132,19 @@ def load_Testing_Data(data_dir='./data/',files_to_use='all'):
     return testX
 
 '''
+Get Times from data
+'''
+def load_Times(data_dir='./data/',file_to_use='dswrf_sfc',set='Train'):
+    if(set=='Train'):
+        sub_str = '_latlon_subset_20080101_20121130.nc'
+    elif(set=='Test'):
+        sub_str = '_latlon_subset_19940101_20071231.nc'
+
+    print 'Loading test data...'
+    data = load_GEFS_Object(data_dir+'test/',file_to_use,sub_str)
+    return data.variables['intTime'][:]
+
+'''
 Fit the Model with training data
 '''
 def fit_Model(trainX, trainY, model, N):
