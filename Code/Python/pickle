@@ -1,0 +1,3 @@
+import cPickle as pickle
+pickle.dump( variable_name, open( "filename"+example_num+".p", "wb" ) )
+variable_name = pickle.load( open( "filename"+example_num+".p", "rb" ) )
