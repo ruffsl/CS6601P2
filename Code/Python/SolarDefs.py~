@@ -46,7 +46,7 @@ def load_GEFS_file(directory,data_type,file_sub_str):
 	T = data.variables['intTime'][:]
         X = data.variables.values()[-1][:,:,:,:,:] # get rid of some GEFS points
         #X = X.reshape(X.shape[0],55,4,10)                               # Reshape to merge sub_models and time_forcasts
-        X = np.mean(X,axis=1)                                            # Average models, but not hours
+        #X = np.mean(X,axis=1)                                            # Average models, but not hours
         X = X.reshape(X.shape[0],np.prod(X.shape[1:]))                   # Reshape into (n_examples,n_features)
         return T, X
 
