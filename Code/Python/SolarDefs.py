@@ -65,7 +65,7 @@ over the zeros with the model predictions.
 '''
 def save_submission(preds,submit_name,data_dir):
         fexample = open(os.path.join(data_dir,'sampleSubmission.csv'))
-        fout = open(submit_name,'wb')
+        fout     = open(os.path.join(data_dir,submit_name),'wb')
         fReader = csv.reader(fexample,delimiter=',', skipinitialspace=True)
         fwriter = csv.writer(fout)
         for i,row in enumerate(fReader):
@@ -129,8 +129,12 @@ def load_Testing_Data(data_dir='./data/',files_to_use='all'):
     print 'Loading test data...'
     testT, testX = load_GEFS_data(data_dir+'test/',files_to_use,test_sub_str)
     print 'Test data shape',testX.shape
+
+    # Load expected solar values for given days
+    solarData = np.loadtxt("../../Data/TSiteSolarsTest.csv",delimiter=',',dtype=float,skiprows=1)
+    augmentX = solarData[:,1:]
     
-    return testT, testX
+    return testT, testX, augmentX
 
 '''
 Get Times from data
