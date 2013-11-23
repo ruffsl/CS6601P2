@@ -27,13 +27,15 @@ SEED = 42 # Random seed to keep consistent
 Loads a list of GEFS files merging them into model format.
 '''
 def load_GEFS_data(directory,files_to_use,file_sub_str):
-        for i,f in enumerate(files_to_use):
-                if i == 0:
-                        T, X = load_GEFS_file(directory,files_to_use[i],file_sub_str)
-                else:
-                        T, X_new = load_GEFS_file(directory,files_to_use[i],file_sub_str)
-                        X = np.hstack((X,X_new))
-        return T, X
+    for i,f in enumerate(files_to_use):
+        if i == 0:
+            T, X = load_GEFS_file(directory,files_to_use[i],file_sub_str)
+            X = np.expand_dims(X, axis=1)
+        else:
+            T, X_new = load_GEFS_file(directory,files_to_use[i],file_sub_str)
+            X_new = np.expand_dims(X_new, axis=1)
+            X = np.hstack((X,X_new))
+    return T, X
 
 '''
 Loads GEFS file using specified merge technique.
@@ -46,10 +48,9 @@ def load_GEFS_file(directory,data_type,file_sub_str):
 	T = data.variables['intTime'][:]
         X = data.variables.values()[-1][:,:,:,:,:] # get rid of some GEFS points
         #X = X.reshape(X.shape[0],55,4,10)                               # Reshape to merge sub_models and time_forcasts
-        X = np.mean(X,axis=1)                                            # Average models, but not hours
-        X = X.reshape(X.shape[0],np.prod(X.shape[1:]))                   # Reshape into (n_examples,n_features)
+        #X = np.mean(X,axis=1)                                            # Average models, but not hours
+        #X = X.reshape(X.shape[0],np.prod(X.shape[1:]))                   # Reshape into (n_examples,n_features)
         return T, X
-
 '''
 Load csv test/train data splitting out times.
 '''
