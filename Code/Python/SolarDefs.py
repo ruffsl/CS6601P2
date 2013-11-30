@@ -1,10 +1,6 @@
-# -*- coding: utf-8 -*-
-# <nbformat>3.0</nbformat>
-
-# <codecell>
-
 import csv
 import os
+import math
 import netCDF4 as nc
 import numpy as np
 import pandas as pd
@@ -12,6 +8,7 @@ import Pysolar as ps
 import datetime
 from matplotlib import pyplot as plt
 from sklearn import metrics
+from sklearn import ensemble
 from sklearn.linear_model import Ridge
 from sklearn.decomposition import PCA
 from sklearn.cross_validation import train_test_split
@@ -29,28 +26,38 @@ Loads a list of GEFS files merging them into model format.
 def load_GEFS_data(directory,files_to_use,file_sub_str):
     for i,f in enumerate(files_to_use):
         if i == 0:
-            T, X = load_GEFS_file(directory,files_to_use[i],file_sub_str)
+            T, X, infos = load_GEFS_file(directory,files_to_use[i],file_sub_str)
             X = np.expand_dims(X, axis=1)
         else:
-            T, X_new = load_GEFS_file(directory,files_to_use[i],file_sub_str)
+            T, X_new, infos = load_GEFS_file(directory,files_to_use[i],file_sub_str)
             X_new = np.expand_dims(X_new, axis=1)
             X = np.hstack((X,X_new))
-    return T, X
+    X = X.reshape(X.shape[0],X.shape[1],X.shape[2],X.shape[3],X.shape[4]*X.shape[5])
+    X = np.swapaxes(X,1,4)
+    return T, X, infos
 
 '''
 Loads GEFS file using specified merge technique.
 '''
 def load_GEFS_file(directory,data_type,file_sub_str):
-        print 'loading',data_type
-        path = os.path.join(directory,data_type+file_sub_str)
-        print 'this is the path: ', path
-	data = nc.Dataset(path,'r+')
-	T = data.variables['intTime'][:]
-        X = data.variables.values()[-1][:,:,:,:,:] # get rid of some GEFS points
-        #X = X.reshape(X.shape[0],55,4,10)                               # Reshape to merge sub_models and time_forcasts
-        #X = np.mean(X,axis=1)                                            # Average models, but not hours
-        #X = X.reshape(X.shape[0],np.prod(X.shape[1:]))                   # Reshape into (n_examples,n_features)
-        return T, X
+    print 'loading',data_type
+    path = os.path.join(directory,data_type+file_sub_str)
+    print 'this is the path: ', path
+    data = nc.Dataset(path,'r+')
+    T = data.variables['intTime'][:]
+    X = data.variables.values()[-1][:,:,:,:,:] # get rid of some GEFS points
+    infos = []
+    lats = data.variables['lat'][:]
+    lons = data.variables['lon'][:]-360
+    for lat in lats:
+        for lon in lons:
+            info = {'lat':lat,'lon':lon}
+            infos.append(info)
+    #X = X.reshape(X.shape[0],55,4,10)                               # Reshape to merge sub_models and time_forcasts
+    #X = np.mean(X,axis=1)                                            # Average models, but not hours
+    #X = X.reshape(X.shape[0],np.prod(X.shape[1:]))                   # Reshape into (n_examples,n_features)
+    return T, X, infos
+
 '''
 Load csv test/train data splitting out times.
 '''
@@ -110,7 +117,7 @@ def load_Training_Data(data_dir='./data/',files_to_use='all'):
     train_sub_str = '_latlon_subset_19940101_20071231.nc'
 
     print 'Loading training data...'
-    trainT, trainX = load_GEFS_data(data_dir+'train/',files_to_use,train_sub_str)
+    trainT, trainX, infos = load_GEFS_data(data_dir+'train/',files_to_use,train_sub_str)
     trainY = load_csv_data(os.path.join(data_dir,'train.csv'))
     print 'Training data shape',trainX.shape,trainY.shape
     
@@ -118,7 +125,7 @@ def load_Training_Data(data_dir='./data/',files_to_use='all'):
     solarData = np.loadtxt("../../Data/TSiteSolars.csv",delimiter=',',dtype=float,skiprows=1)
     augmentX = solarData[:,1:]
     
-    return trainT, trainX, trainY, augmentX
+    return trainT, trainX, trainY, infos, augmentX
 
 '''
 Load testing data
@@ -128,14 +135,31 @@ def load_Testing_Data(data_dir='./data/',files_to_use='all'):
     test_sub_str = '_latlon_subset_20080101_20121130.nc'
 
     print 'Loading test data...'
-    testT, testX = load_GEFS_data(data_dir+'test/',files_to_use,test_sub_str)
+    testT, testX, infos = load_GEFS_data(data_dir+'test/',files_to_use,test_sub_str)
     print 'Test data shape',testX.shape
-
+   
     # Load expected solar values for given days
     solarData = np.loadtxt("../../Data/TSiteSolarsTest.csv",delimiter=',',dtype=float,skiprows=1)
     augmentX = solarData[:,1:]
     
-    return testT, testX, augmentX
+    return testT, testX, infos, augmentX
+
+'''
+Load station info
+'''
+def load_Station_Info(data_dir='./data/'):
+
+    print 'Loading station info...'
+    infos = []
+    df = pd.read_csv(os.path.join(data_dir,'station_info.csv')).T
+    for i, station in df.iteritems():
+        temp = {'stid': station['stid'],
+                'lat': station['nlat'],
+                'lon': station['elon'],
+                'elev': station['elev'],
+                'index':i}
+        infos.append(temp)
+    return infos
 
 '''
 Get Times from data
