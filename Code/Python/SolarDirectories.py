@@ -1,1 +1,1 @@
-data_dir = '/media/Data/Project Data/Solar Energy/'
+data_dir = '/media/Data/SolarData/'
