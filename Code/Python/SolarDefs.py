@@ -4,7 +4,6 @@ import math
 import netCDF4 as nc
 import numpy as np
 import pandas as pd
-import Pysolar as ps
 import datetime
 from matplotlib import pyplot as plt
 from sklearn import metrics
@@ -212,39 +211,4 @@ def pcaStuff(inputX,inputY):
     pca.fit(inputX,inputY)
     outputX = pca.transform(inputX)
     return pca, outputX
-
-def getSolarRadiation(lat, lon, time):
-    altitude = ps.GetAltitude(lat, lon, time)
-    return ps.radiation.GetRadiationDirect(time, altitude)
-
-def getDailySolar(lat, lon, day):
-    dailySolar = 0
-    for minute in range(0, 24*60, 5):
-        time = day + datetime.timedelta(minutes=minute)
-        dailySolar += getSolarRadiation(lat, lon, time)
-    dailySolar *= 300 #3600(joules per watt)*(5.0/60.0)(sample time)
-    return dailySolar
-
-def getMaxSolar(lat, lon, times):
-    maxSolarEnergy = []
-    for day in times:
-        day = datetime.datetime.strptime(str(day),'%Y%m%d')
-        maxSolarEnergy.append(getDailySolar(lat, lon, day))
-    return maxSolarEnergy
-
-def genSiteSolar(data_dir='./data/', saveFileName='SiteSolars.csv'):
-    with open(os.path.join(data_dir,saveFileName), 'wb') as csvfile:
-        spamwriter = csv.writer(csvfile)    
-        times,trainY = load_csv_data(os.path.join(data_dir,'test.csv'))
-        df = pd.read_csv(os.path.join(data_dir,'station_info.csv')).T
-        dates = ['Date'] + list(times)
-        spamwriter.writerow(dates)
-        for i, station in df.iteritems():
-            maxSolar = getMaxSolar(station['nlat'], station['elon'], times)
-            stid = [station['stid']] + maxSolar
-            spamwriter.writerow(stid)
-            print('Job: ', i, ' Station: ', station['stid'])
-    
-    a = izip(*csv.reader(open(os.path.join(data_dir,saveFileName), "rb")))
-    csv.writer(open(os.path.join(data_dir,'T'+saveFileName), "wb")).writerows(a)
 
