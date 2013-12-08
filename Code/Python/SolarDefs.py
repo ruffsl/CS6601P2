@@ -249,3 +249,144 @@ def compexMonthOfYear(T):
     compexMonths = np.vstack((real,imaginary)).T
     return compexMonths
 
+class stationClass:
+
+    def __init__(self, info, model, config):
+        '''Create a Station Model'''
+        # Store the info about the station
+        self.info   = info
+        
+        # Store the regression model used
+        # for each weather prediction model
+        self.models = [model]*11
+        
+        # Store the configuration of the station
+        self.config = config
+        
+        # Store the GEFS points to be used
+        self.GEFSs  = self.getGEFSs()
+        
+    
+    def fit(self, X_train, y_train, wModels=None, mod_train=None):
+        '''Fit the Station Model'''
+        X_train = self.filterGEFSX(X_train)
+        y_train = self.filterGEFSy(y_train)
+        if (wModels == None):
+            wModels = range(11)
+        for i,index in enumerate(wModels):
+            print "     Fitting Model:", i
+            model = self.models[index]
+            X = X_train[:,:,i]
+            X = X.reshape(X.shape[0],np.prod(X.shape[1:]))
+            if mod_train != None:
+                X = np.hstack((X,mod_train))
+            model.fit(X,y_train)
+         
+    def predict(self, X_test, wModels=None, mod_train=None):
+        '''Predict with the Station Model'''
+        X_test = self.filterGEFSX(X_test)
+        if (wModels == None):
+            wModels = range(11)
+        for i,index in enumerate(wModels):
+            print "     Predicting Model:", index
+            X = X_test[:,:,index]
+            X = X.reshape(X.shape[0],np.prod(X.shape[1:]))
+            if mod_train != None:
+                X = np.hstack((X,mod_train))
+            model = self.models[index]
+            if i == 0:
+                prediction = model.predict(X)
+            else:
+                prediction = np.vstack((prediction,model.predict(X)))
+        return prediction
+    
+    def getDistance(self,station, GEFS):
+        '''Find the distance from the Station'''
+        lat1, lon1 = [station['lat'], station['lon']]
+        lat2, lon2 = [GEFS['lat'], GEFS['lon']]
+        radius = 6371 # km
+    
+        dlat = math.radians(lat2-lat1)
+        dlon = math.radians(lon2-lon1)
+        a = math.sin(dlat/2) * math.sin(dlat/2) + math.cos(math.radians(lat1)) \
+            * math.cos(math.radians(lat2)) * math.sin(dlon/2) * math.sin(dlon/2)
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+        d = radius * c
+    
+        return d
+    
+    def getGEFSs(self):
+        '''Get only the GEFS that are the N closest for config'''
+        distances = []
+        for index, GEFS in enumerate(self.info['GEFSs']):
+            distance = self.getDistance(self.info['station'], GEFS)
+            distances.append([index,distance])
+        distances = sorted(distances,key=lambda l:l[1])
+        GEFSs = []
+        N = self.config['nGEFS']
+        for index, GEFS in distances[0:N]:
+            GEFSs.append(index)
+        return GEFSs
+    
+    def filterGEFSX(self, X):
+        '''Filter X data to just used GEFS points'''
+        for i, GEFS in enumerate(self.GEFSs):
+            if i == 0:
+                X_new = X[:,GEFS]
+                X_new = np.expand_dims(X_new, axis=1)
+            else:
+                X_temp = X[:,GEFS]
+                X_temp = np.expand_dims(X_temp, axis=1)
+                X_new = np.hstack((X_new,X_temp))
+        return X_new
+    
+    def filterGEFSy(self, y):
+        '''Filter y data to just used GEFS points'''
+        y_new = y[:,self.info['station']['index']]
+        return y_new
+
+def makeStations(station_infos, GEFS_infos, model, config):
+    stations = []
+    for station_info in station_infos:
+        info = {'station':station_info,
+                'GEFSs':GEFS_infos}
+        temp_station = stationClass(info, model, config)
+        stations.append(temp_station)
+    return stations
+    
+def fitStations(stations, X_train, y_train, wModels=None, mod_train=None):
+    for i, station in enumerate(stations):
+        print "Fitting Station", i
+        station.fit(X_train, y_train, wModels, mod_train)
+    return stations
+    
+def predictStations(stations, X_test, wModels=None, mod_train=None):
+    for i, station in enumerate(stations):
+        print "Predict Station", i
+        prediction = station.predict(X_test,wModels,mod_train)
+        if i == 0:
+            prediction = np.expand_dims(prediction,0)
+            predictions = prediction
+        else:
+            prediction = np.expand_dims(prediction,0)
+            predictions = np.vstack((finalPrediction,prediction))
+    return predictions
+
+def savePickle(data, data_dir, file_name):
+    pickle.dump(data, open(os.path.join(data_dir,file_name), "wb"))
+    
+def loadPickle(data_dir, file_name):
+    data = pickle.load(open(os.path.join(data_dir,file_name), "rb"))
+    return data
+
+def saveModels(stations, data_dir, file_name):
+    stationModels = []
+    for station in stations:
+        stationModels.append(station.models)
+    savePickle(stationModels, data_dir, file_name)
+    
+def loadModels(stations, data_dir, file_name):
+    stationModels = loadPickle(data_dir, file_name)
+    for i, station in enumerate(stations):
+        station.models = stationModels[i]
+    return stations
