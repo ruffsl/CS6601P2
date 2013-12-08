@@ -4,6 +4,7 @@ import math
 import netCDF4 as nc
 import numpy as np
 import pandas as pd
+import cPickle as pickle
 import datetime
 from matplotlib import pyplot as plt
 from sklearn import metrics
@@ -211,4 +212,40 @@ def pcaStuff(inputX,inputY):
     pca.fit(inputX,inputY)
     outputX = pca.transform(inputX)
     return pca, outputX
+
+def dayOfYear(T):
+    '''Get the day of year time vector'''
+    days = []
+    for t in T:
+        day = datetime.datetime.strptime(str(t),'%Y%m%d%H')
+        day = day.timetuple().tm_yday
+        days.append(day)
+    days = np.array(days)
+    return days
+
+def compexDayOfYear(T):
+    '''Get the compex day of year time vector'''
+    T = dayOfYear(T)
+    real = np.sin((T/365.0)*2*np.pi)
+    imaginary = np.cos((T/365.0)*2*np.pi)
+    compexDays = np.vstack((real,imaginary)).T
+    return compexDays
+
+def monthOfYear(T):
+    '''Get the day of year time vector'''
+    months = []
+    for t in T:
+        month = datetime.datetime.strptime(str(t),'%Y%m%d%H')
+        month = month.timetuple().tm_mon
+        months.append(month)
+    months = np.array(months)
+    return months
+
+def compexMonthOfYear(T):
+    '''Get the compex day of year time vector'''
+    T = monthOfYear(T)
+    real = np.sin((T/12.0)*2*np.pi)
+    imaginary = np.cos((T/12.0)*2*np.pi)
+    compexMonths = np.vstack((real,imaginary)).T
+    return compexMonths
 
