@@ -369,7 +369,7 @@ def predictStations(stations, X_test, wModels=None, mod_train=None):
             predictions = prediction
         else:
             prediction = np.expand_dims(prediction,0)
-            predictions = np.vstack((finalPrediction,prediction))
+            predictions = np.vstack((predictions,prediction))
     return predictions
 
 def savePickle(data, data_dir, file_name):

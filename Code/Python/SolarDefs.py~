@@ -345,7 +345,7 @@ class stationClass:
         y_new = y[:,self.info['station']['index']]
         return y_new
 
-def makeStations(station_infos, model, config):
+def makeStations(station_infos, GEFS_infos, model, config):
     stations = []
     for station_info in station_infos:
         info = {'station':station_info,
